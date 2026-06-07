@@ -1,6 +1,6 @@
 # 🔐 BTX Offline Wallet Generator
-
-**Secure offline wallet generator for BitcoinTX (BTX) - Windows Edition**
+ btx.dev
+**Secure offline wallet generator for BTX (BTX.dev) - Windows Edition**
 
 This tool generates BTX wallets completely offline, ensuring your private keys never touch the internet. Perfect for cold storage and secure wallet creation.
 
