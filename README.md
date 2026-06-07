@@ -1,6 +1,8 @@
 # 🔐 BTX Offline Wallet Generator
- btx.dev
-**Secure offline wallet generator for BTX (BTX.dev) - Windows Edition**
+
+
+
+**Secure offline wallet generator for BTX (btx.dev) - Windows Edition**
 
 This tool generates BTX wallets completely offline, ensuring your private keys never touch the internet. Perfect for cold storage and secure wallet creation.
 
@@ -68,6 +70,12 @@ btx-cli -chain=main -rpcwallet=MyWallet importdescriptors '[{"desc": "DESCRIPTOR
 1. Open BTX wallet CLI
 2. Run: `importprivkey "YOUR_PRIVATE_KEY_WIF" "wallet_label"`
 3. Rescan blockchain if needed: `rescanblockchain`
+
+## 🌐 Official Resources & Explorer
+
+- **Official BTX Website**: [btx.dev](https://btx.dev)
+- **BTX Block Explorer**: [explorer.minebtx.com](https://explorer.minebtx.com) 
+  *(We suggest using the official explorer to safely check your balances by searching for your public `btx1...` addresses).*
 
 ## ⚠️ SECURITY WARNINGS
 
