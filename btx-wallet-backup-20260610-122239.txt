@@ -1,0 +1,24 @@
+BTX WALLET BACKUP - CONSERVA AL SICURO, NON CONDIVIDERE
+============================================================
+creato: 2026-06-10T12:22:39
+
+MASTER SEED (32 byte hex) - chi ha questo controlla i fondi:
+  247339a5b5230a8e77418097bbcbe1f25689f9d5cf4bd8cce007836a184dd082
+
+Indirizzi di ricezione (P2MR / bech32m witness v2):
+  [0]  btx1zu232ajassy4en9tyk7pmgdvmcnay7djts7d22pn6g8czqd6ya6csj9gxkl
+
+Descriptor importabili in btxd (descriptor wallet):
+  ricezione : mr(pqhd(247339a5b5230a8e77418097bbcbe1f25689f9d5cf4bd8cce007836a184dd082/0h/0h/0/*),pk_slh(pqhd(247339a5b5230a8e77418097bbcbe1f25689f9d5cf4bd8cce007836a184dd082/0h/0h/0/*)))#rm9naklc
+  resto     : mr(pqhd(247339a5b5230a8e77418097bbcbe1f25689f9d5cf4bd8cce007836a184dd082/0h/0h/1/*),pk_slh(pqhd(247339a5b5230a8e77418097bbcbe1f25689f9d5cf4bd8cce007836a184dd082/0h/0h/1/*)))#j029me7v
+
+RIPRISTINO / SPESA (richiede btxd con wallet descriptor):
+  btx-cli createwallet "mio" false true "" false true
+  btx-cli -rpcwallet=mio importdescriptors '[{"desc":"mr(pqhd(247339a5b5230a8e77418097bbcbe1f25689f9d5cf4bd8cce007836a184dd082/0h/0h/0/*),pk_slh(pqhd(247339a5b5230a8e77418097bbcbe1f25689f9d5cf4bd8cce007836a184dd082/0h/0h/0/*)))#rm9naklc","timestamp":"now","active":true,"range":[0,99]},{"desc":"mr(pqhd(247339a5b5230a8e77418097bbcbe1f25689f9d5cf4bd8cce007836a184dd082/0h/0h/1/*),pk_slh(pqhd(247339a5b5230a8e77418097bbcbe1f25689f9d5cf4bd8cce007836a184dd082/0h/0h/1/*)))#j029me7v","timestamp":"now","active":true,"internal":true,"range":[0,99]}]'
+  Nota: importando la forma PRIVATA (col seed, come sopra) il wallet
+  ottiene le chiavi post-quantum e puo' FIRMARE/SPENDERE. L'eventuale
+  avviso 'Not all private keys' e 'solvable:false' riguarda solo il
+  check ECDSA legacy: non impedisce la spesa P2MR post-quantum.
+
+Oppure rigenera/verifica gli indirizzi offline con:
+  python btx_address.py --seed 247339a5b5230a8e77418097bbcbe1f25689f9d5cf4bd8cce007836a184dd082 --count 3

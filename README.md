@@ -1,90 +1,97 @@
-# 🔐 BTX Offline Wallet Generator
+# 🔐 BTX Offline Wallet Generator — pure Python, zero dipendenze
 
+Genera indirizzi **BTX** (post-quantum, P2MR / BIP-360) **completamente offline**,
+con **un solo file Python** e **zero dipendenze esterne** (solo `hashlib`/`hmac`
+della standard library). Niente btxd, niente Internet, niente `pip install`.
 
+La derivazione è **reimplementata byte-per-byte dal sorgente** `btxd` e
+**validata** contro i golden vector del nodo ufficiale (vedi sotto). Il vecchio
+tool che pilotava `btxd` è stato superato e archiviato in
+`_VECCHIO_ROTTO_NON_USARE/`.
 
-**Secure offline wallet generator for BTX (btx.dev) - Windows Edition**
+## Cosa fa, in breve
 
-This tool generates BTX wallets completely offline, ensuring your private keys never touch the internet. Perfect for cold storage and secure wallet creation.
-
-## 📁 Files Included
-
-- `btx-offline-wallet-generator.exe` - Pre-compiled Windows executable (No Python required!)
-- `run-generator-exe.bat` - Windows batch file to run the pre-compiled executable directly
-- `btx-offline-wallet-generator.py` - Main Python script
-- `generate-btx-wallet.bat` - Windows batch file to run using Python
-- `verify-btx-address.py` - Address verification tool
-- `README-BTX-WALLET-GENERATOR.md` - This file
-
-## 🚀 Quick Start
-
-### Method 1: Using the Pre-compiled Executable (Easiest)
-1. Double-click `run-generator-exe.bat`
-2. Follow the on-screen instructions
-3. Backup your wallet files securely
-
-### Method 2: Using the Python Batch File
-1. Double-click `generate-btx-wallet.bat`
-2. Follow the on-screen instructions
-
-### Method 3: Using Python Directly
-```bash
-python btx-offline-wallet-generator.py
+```
+master_seed (32B casuali)
+  └─ pqhd  (HKDF-SHA256, "BTX-PQ-BIP87-HKDF-V1")        → seed per-algo per indice
+       ├─ ML-DSA-44   (FIPS 204, Dilithium ref)         → pubkey 1312B  → foglia
+       └─ SLH-DSA-SHAKE-128s (FIPS 205, SPHINCS+ ref)   → pubkey 32B    → foglia
+            └─ merkle root mr() (tag "P2MRLeaf"/"P2MRBranch") → programma 32B
+                 └─ bech32m (hrp "btx", witness v2)      → indirizzo btx1z...
 ```
 
-## 📦 Requirements (Only for Method 2 & 3)
+## Uso
 
-- **Python 3.6+** (https://www.python.org/downloads/)
-- Python libraries: `ecdsa`, `base58`, `pqcrypto` (installed automatically)
-
-## 🔒 Security Features
-
-✅ **Completely Offline** - No internet connection required
-✅ **Secure Random Generation** - Uses cryptographically secure random numbers
-✅ **SPHINCS+ (P2MR) Support** - Post-Quantum secure wallets (starts with 'btx1z')
-✅ **ECDSA Support** - Standard secure wallets
-✅ **Offline Checksum Calculation** - 100% offline generation of valid descriptors with checksums
-
-## 💼 Wallet Formats
-
-### 1. SPHINCS+ (P2MR - Post-Quantum)
-- **Address Type**: Pay-to-Merkle-Root (starts with 'btx1z')
-- **Backup**: Master Seed (32-byte hex) + P2MR Descriptor
-- **Descriptor**: `mr(pqhd(seed/0h/0h/0/*),pk_slh(pqhd(seed/0h/0h/0/*)))#checksum`
-
-### 2. ECDSA (Standard)
-- **Address Type**: Pay-to-Witness-PubKey-Hash (starts with 'btx1q')
-- **Backup**: Private Key (WIF) + Descriptor
-- **Descriptor**: `wpkh(wif_key)#checksum`
-
-## 🔄 Importing to BTX Wallet
-
-### Method 1: Importing Descriptor (Recommended for both ECDSA & SPHINCS+)
-1. Open BTX wallet CLI
-2. Run `importdescriptors` command using the JSON payload generated in your backup `.txt` file:
 ```bash
-btx-cli -chain=main -rpcwallet=MyWallet importdescriptors '[{"desc": "DESCRIPTOR_WITH_CHECKSUM", "timestamp": TIMESTAMP, "active": false}]'
+# genera un nuovo wallet (seed casuale) + file di backup
+python btx_address.py
+
+# nuovo wallet con N indirizzi di ricezione
+python btx_address.py --count 5
+
+# rigenera / verifica gli indirizzi da un seed esistente (offline, idempotente)
+python btx_address.py --seed <64-hex> --count 3
+
+# self-test: confronta foglie, root, indirizzi e checksum coi golden vector di btxd
+python btx_address.py --test
 ```
-3. Rescan blockchain if needed: `rescanblockchain`
 
-### Method 2: Importing Private Key (ECDSA Only)
-1. Open BTX wallet CLI
-2. Run: `importprivkey "YOUR_PRIVATE_KEY_WIF" "wallet_label"`
-3. Rescan blockchain if needed: `rescanblockchain`
+Su Windows puoi anche fare doppio click / usare `genera-wallet.bat`
+(`genera-wallet.bat`, `genera-wallet.bat 5`, `genera-wallet.bat --test`).
 
-## 🌐 Official Resources & Explorer
+## Cosa produce
 
-- **Official BTX Website**: [btx.dev](https://btx.dev)
-- **BTX Block Explorer**: [explorer.minebtx.com](https://explorer.minebtx.com) 
-  *(We suggest using the official explorer to safely check your balances by searching for your public `btx1...` addresses).*
+Stampa a video gli indirizzi + i descriptor, e salva
+`btx-wallet-backup-AAAAMMGG-hhmmss.txt` con:
 
-## ⚠️ SECURITY WARNINGS
+- **MASTER SEED** (32 byte hex) — *il segreto*: chi lo ha controlla i fondi.
+- Indirizzi di ricezione (`btx1z...`, witness v2).
+- I **descriptor** ricezione/resto **con checksum** (pronti da importare in btxd).
+- Le istruzioni `createwallet` + `importdescriptors` per ripristinare/spendere.
 
-🔴 **NEVER share your private key or master seed with anyone**
-🔴 **Always test with small amounts first**
-🔴 **Make multiple secure backups**
-🔴 **Store backups in different physical locations**
-🔴 **Use encrypted storage for digital backups**
+## Ripristino / spesa
 
----
+Su un nodo BTX con la blockchain (wallet descriptor):
 
-**Stay safe, keep your keys offline! 🔐**
+```bash
+btx-cli createwallet "mio" false true "" false true
+btx-cli -rpcwallet=mio importdescriptors '[{"desc":"<descriptor#checksum dal backup>","timestamp":"now","active":true,"range":[0,99]}]'
+btx-cli -rpcwallet=mio rescanblockchain
+```
+
+Importando la **forma privata** del descriptor (quella col seed, come nel backup) il
+wallet ottiene le chiavi post-quantum e **può firmare/spendere**. L'eventuale avviso
+`Not all private keys provided` e `solvable: false` riguarda solo il check ECDSA
+*legacy* (i pubkey P2MR non sono secp256k1) e **non** impedisce la spesa P2MR.
+
+## Validazione (riproducibile)
+
+`python btx_address.py --test` verifica byte-per-byte contro `btxd`
+(seed di test `0102…20`):
+
+| elemento | atteso |
+|---|---|
+| foglia ML-DSA  | `612d80…03b3` |
+| foglia SLH-DSA | `188706f8…1678` |
+| merkle root #0 | `cd623f05…752d` |
+| indirizzo #0   | `btx1ze43r7pv…su5f7r` |
+| checksum descriptor | `uc5vpulu` |
+
+End-to-end (`e2e-import-test.sh`, via WSL+btxd): seed casuale → indirizzi Python
+**==** `btxd deriveaddresses`, e `importdescriptors` → `getnewaddress` ritorna lo
+stesso indirizzo `[0]` (`ismine: true`). **Match confermato.**
+
+## File
+
+- **`btx_address.py`** — IL generatore (libreria + CLI), single-file, zero deps.
+- `SPEC-btx-address.md` — spec reverse-engineered della derivazione.
+- `golden-vector.sh` / `golden-leaves.sh` — estraggono i golden vector da btxd.
+- `e2e-import-test.sh` — test round-trip Python ↔ btxd (richiede WSL+btxd).
+- `_VECCHIO_ROTTO_NON_USARE/` — vecchio tool btxd-driven, archiviato.
+
+## ⚠️ Sicurezza
+
+- Genera **su un PC offline**. Il MASTER SEED è l'unico segreto: chi lo ha, ha i fondi.
+- **Non condividere** seed né la forma privata dei descriptor.
+- Conserva il backup **offline** (USB/carta), in **più copie** in luoghi diversi.
+- Il pubblico è solo l'indirizzo `btx1z...`; il seed non compare mai negli indirizzi.
