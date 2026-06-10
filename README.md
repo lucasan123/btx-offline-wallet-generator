@@ -1,97 +1,107 @@
-# 🔐 BTX Offline Wallet Generator — pure Python, zero dipendenze
+# 🔐 BTX Offline Wallet Generator — pure Python, zero dependencies
 
-Genera indirizzi **BTX** (post-quantum, P2MR / BIP-360) **completamente offline**,
-con **un solo file Python** e **zero dipendenze esterne** (solo `hashlib`/`hmac`
-della standard library). Niente btxd, niente Internet, niente `pip install`.
+> 🇮🇹 Versione italiana: [README-it.md](README-it.md)
 
-La derivazione è **reimplementata byte-per-byte dal sorgente** `btxd` e
-**validata** contro i golden vector del nodo ufficiale (vedi sotto). Il vecchio
-tool che pilotava `btxd` è stato superato e archiviato in
-`_VECCHIO_ROTTO_NON_USARE/`.
+Generate **BTX** addresses (post-quantum, P2MR / BIP-360) **fully offline**, from a
+**single Python file** with **zero external dependencies** (only `hashlib`/`hmac`
+from the standard library). No btxd, no Internet, no `pip install`.
 
-## Cosa fa, in breve
+The derivation is **re-implemented byte-for-byte from the `btxd` source** and
+**validated** against the official node's golden vectors (see below).
+
+## What it does, in short
 
 ```
-master_seed (32B casuali)
-  └─ pqhd  (HKDF-SHA256, "BTX-PQ-BIP87-HKDF-V1")        → seed per-algo per indice
-       ├─ ML-DSA-44   (FIPS 204, Dilithium ref)         → pubkey 1312B  → foglia
-       └─ SLH-DSA-SHAKE-128s (FIPS 205, SPHINCS+ ref)   → pubkey 32B    → foglia
-            └─ merkle root mr() (tag "P2MRLeaf"/"P2MRBranch") → programma 32B
-                 └─ bech32m (hrp "btx", witness v2)      → indirizzo btx1z...
+master_seed (32 random bytes)
+  └─ pqhd  (HKDF-SHA256, "BTX-PQ-BIP87-HKDF-V1")        → per-algo seed per index
+       ├─ ML-DSA-44   (FIPS 204, Dilithium ref)         → 1312B pubkey  → leaf
+       └─ SLH-DSA-SHAKE-128s (FIPS 205, SPHINCS+ ref)   → 32B pubkey    → leaf
+            └─ merkle root mr() (tag "P2MRLeaf"/"P2MRBranch") → 32B program
+                 └─ bech32m (hrp "btx", witness v2)      → address btx1z...
 ```
 
-## Uso
+BTX addresses are **P2MR** (Pay-to-Merkle-Root, BIP-360 style): a bech32m witness-v2
+address whose 32-byte program is a Taproot-like merkle root committing to two
+post-quantum keys — **ML-DSA-44** (primary, FIPS 204) and **SLH-DSA-SHAKE-128s**
+(backup, FIPS 205 / SPHINCS+).
+
+## Usage
 
 ```bash
-# genera un nuovo wallet (seed casuale) + file di backup
+# generate a new wallet (random seed) + backup file
 python btx_address.py
 
-# nuovo wallet con N indirizzi di ricezione
+# new wallet with N receiving addresses
 python btx_address.py --count 5
 
-# rigenera / verifica gli indirizzi da un seed esistente (offline, idempotente)
+# re-derive / verify addresses from an existing seed (offline, idempotent)
 python btx_address.py --seed <64-hex> --count 3
 
-# self-test: confronta foglie, root, indirizzi e checksum coi golden vector di btxd
+# self-test: compares leaves, root, addresses and checksum vs btxd golden vectors
 python btx_address.py --test
 ```
 
-Su Windows puoi anche fare doppio click / usare `genera-wallet.bat`
-(`genera-wallet.bat`, `genera-wallet.bat 5`, `genera-wallet.bat --test`).
+On Windows you can double-click **`btx-wallet.exe`** (standalone release, no Python
+needed) or use `genera-wallet.bat` (`genera-wallet.bat`, `genera-wallet.bat 5`,
+`genera-wallet.bat --test`).
 
-## Cosa produce
+## What it produces
 
-Stampa a video gli indirizzi + i descriptor, e salva
-`btx-wallet-backup-AAAAMMGG-hhmmss.txt` con:
+It prints the addresses + descriptors and writes
+`btx-wallet-backup-YYYYMMDD-HHMMSS.txt` containing:
 
-- **MASTER SEED** (32 byte hex) — *il segreto*: chi lo ha controlla i fondi.
-- Indirizzi di ricezione (`btx1z...`, witness v2).
-- I **descriptor** ricezione/resto **con checksum** (pronti da importare in btxd).
-- Le istruzioni `createwallet` + `importdescriptors` per ripristinare/spendere.
+- **MASTER SEED** (32-byte hex) — *the secret*: whoever has it controls the funds.
+- Receiving addresses (`btx1z...`, witness v2).
+- The receive/change **descriptors with checksum** (ready to import into btxd).
+- The `createwallet` + `importdescriptors` instructions to restore/spend.
 
-## Ripristino / spesa
+## Restore / spend
 
-Su un nodo BTX con la blockchain (wallet descriptor):
+On a BTX node with the blockchain (descriptor wallet):
 
 ```bash
-btx-cli createwallet "mio" false true "" false true
-btx-cli -rpcwallet=mio importdescriptors '[{"desc":"<descriptor#checksum dal backup>","timestamp":"now","active":true,"range":[0,99]}]'
-btx-cli -rpcwallet=mio rescanblockchain
+btx-cli createwallet "mywallet" false true "" false true
+btx-cli -rpcwallet=mywallet importdescriptors '[{"desc":"<descriptor#checksum from backup>","timestamp":"now","active":true,"range":[0,99]}]'
+btx-cli -rpcwallet=mywallet rescanblockchain
 ```
 
-Importando la **forma privata** del descriptor (quella col seed, come nel backup) il
-wallet ottiene le chiavi post-quantum e **può firmare/spendere**. L'eventuale avviso
-`Not all private keys provided` e `solvable: false` riguarda solo il check ECDSA
-*legacy* (i pubkey P2MR non sono secp256k1) e **non** impedisce la spesa P2MR.
+Importing the **private form** of the descriptor (the one with the seed, as in the
+backup) gives the wallet the post-quantum keys, so it **can sign/spend**. The
+`Not all private keys provided` warning and `solvable: false` only refer to the
+*legacy ECDSA* check (P2MR pubkeys are not secp256k1) and do **not** prevent P2MR
+spending.
 
-## Validazione (riproducibile)
+## Validation (reproducible)
 
-`python btx_address.py --test` verifica byte-per-byte contro `btxd`
-(seed di test `0102…20`):
+`python btx_address.py --test` checks byte-for-byte against `btxd`
+(test seed `0102…20`):
 
-| elemento | atteso |
+| item | expected |
 |---|---|
-| foglia ML-DSA  | `612d80…03b3` |
-| foglia SLH-DSA | `188706f8…1678` |
+| ML-DSA leaf  | `612d80…03b3` |
+| SLH-DSA leaf | `188706f8…1678` |
 | merkle root #0 | `cd623f05…752d` |
-| indirizzo #0   | `btx1ze43r7pv…su5f7r` |
-| checksum descriptor | `uc5vpulu` |
+| address #0   | `btx1ze43r7pv…su5f7r` |
+| descriptor checksum | `uc5vpulu` |
 
-End-to-end (`e2e-import-test.sh`, via WSL+btxd): seed casuale → indirizzi Python
-**==** `btxd deriveaddresses`, e `importdescriptors` → `getnewaddress` ritorna lo
-stesso indirizzo `[0]` (`ismine: true`). **Match confermato.**
+End-to-end (`e2e-import-test.sh`, via WSL+btxd): a random seed → Python addresses
+**==** `btxd deriveaddresses`, and `importdescriptors` → `getnewaddress` returns the
+same `[0]` address (`ismine: true`). **Match confirmed.**
 
-## File
+## Files
 
-- **`btx_address.py`** — IL generatore (libreria + CLI), single-file, zero deps.
-- `SPEC-btx-address.md` — spec reverse-engineered della derivazione.
-- `golden-vector.sh` / `golden-leaves.sh` — estraggono i golden vector da btxd.
-- `e2e-import-test.sh` — test round-trip Python ↔ btxd (richiede WSL+btxd).
-- `_VECCHIO_ROTTO_NON_USARE/` — vecchio tool btxd-driven, archiviato.
+- **`btx_address.py`** — THE generator (library + CLI), single-file, zero deps.
+- `dist/btx-wallet.exe` — standalone Windows release (PyInstaller).
+- `SPEC-btx-address.md` — reverse-engineered spec of the derivation.
+- `golden-vector.sh` / `golden-leaves.sh` — extract the golden vectors from btxd.
+- `e2e-import-test.sh` — Python ↔ btxd round-trip test (needs WSL+btxd).
+- `_VECCHIO_ROTTO_NON_USARE/` — old btxd-driven tool, archived.
 
-## ⚠️ Sicurezza
+## ⚠️ Security
 
-- Genera **su un PC offline**. Il MASTER SEED è l'unico segreto: chi lo ha, ha i fondi.
-- **Non condividere** seed né la forma privata dei descriptor.
-- Conserva il backup **offline** (USB/carta), in **più copie** in luoghi diversi.
-- Il pubblico è solo l'indirizzo `btx1z...`; il seed non compare mai negli indirizzi.
+- Generate **on an offline machine**. The MASTER SEED is the only secret: whoever
+  holds it holds the funds.
+- **Never share** the seed or the private form of the descriptors.
+- Keep the backup **offline** (USB/paper), in **multiple copies** in different places.
+- Only the `btx1z...` address is public; the seed never appears in any address.
+- For maximum trust, run the **`.py` script** (auditable) rather than the exe.
